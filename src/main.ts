@@ -5,10 +5,69 @@ import { Timer } from "three/examples/jsm/Addons.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 /**
+ *  Sounds
+ */
+
+const hitSound = new Audio("/sounds/hit.mp3");
+
+const playHitSound = (collision: CANNON.ICollisionEvent) => {
+  const impactStrength = collision.contact.getImpactVelocityAlongNormal();
+
+  if (impactStrength < 1.5) return;
+
+  hitSound.currentTime = 0;
+  hitSound.volume = Math.min(impactStrength / 10, 1);
+  hitSound.play().catch((error) => {
+    console.error("Error playing sound:", error);
+  });
+};
+
+/**
  * Debug
  */
 const gui = new GUI();
 gui.close();
+
+/**
+ * Debug reste
+ */
+
+const debugObject = {
+  clear: () => {
+    objectsToUpdate.forEach((object) => {
+      object.body.removeEventListener("collide", playHitSound);
+      world.remove(object.body);
+
+      scene.remove(object.mesh);
+    });
+
+    objectsToUpdate.length = 0; // Clear the array
+  },
+  generateRandomBox: () => {
+    const size = Math.random() * 0.5 + 0.5; // Random size between 0.5 and 1
+    const position = new CANNON.Vec3(
+      (Math.random() - 0.5) * 5,
+      Math.random() * 5 + 1,
+      (Math.random() - 0.5) * 5
+    );
+
+    createBoxGeometry(size, position);
+  },
+  generateRandomSphere: () => {
+    const radius = Math.random() * 0.5 + 0.5; // Random radius between 0.5 and 1
+    const position = new CANNON.Vec3(
+      (Math.random() - 0.5) * 5,
+      Math.random() * 5 + 1,
+      (Math.random() - 0.5) * 5
+    );
+
+    createSphereGeometry(radius, position);
+  },
+};
+
+gui.add(debugObject, "clear").name("Clear Scene");
+gui.add(debugObject, "generateRandomBox").name("Generate Random Box");
+gui.add(debugObject, "generateRandomSphere").name("Generate Random Sphere");
 
 /**
  * Base
@@ -58,7 +117,8 @@ const defaultContactMaterial = new CANNON.ContactMaterial(
 );
 
 world.defaultContactMaterial = defaultContactMaterial;
-
+world.broadphase = new CANNON.SAPBroadphase(world);
+world.allowSleep = true;
 /**
  * Physics body's
  */
@@ -118,8 +178,9 @@ const createSphereGeometry = (radius: number, position: CANNON.Vec3) => {
     shape: shape,
   });
 
-  world.addBody(body);
+  body.addEventListener("collide", playHitSound);
 
+  world.addBody(body);
   // Add to the array
   objectsToUpdate.push({ mesh, body });
 };
@@ -167,6 +228,8 @@ const createBoxGeometry = (size: number, position: CANNON.Vec3) => {
     position: position, // m
     shape: shape,
   });
+
+  body.addEventListener("collide", playHitSound);
 
   world.addBody(body);
 
