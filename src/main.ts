@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import CANNON from "cannon";
+import * as CANNON from "cannon-es";
 import GUI from "lil-gui";
 import { Timer } from "three/examples/jsm/Addons.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -10,14 +10,22 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 const hitSound = new Audio("/sounds/hit.mp3");
 
-const playHitSound = (collision: CANNON.ICollisionEvent) => {
+interface CollisionContact {
+  getImpactVelocityAlongNormal(): number;
+}
+
+interface CollisionEvent {
+  contact: CollisionContact;
+}
+
+const playHitSound = (collision: CollisionEvent): void => {
   const impactStrength = collision.contact.getImpactVelocityAlongNormal();
 
   if (impactStrength < 1.5) return;
 
   hitSound.currentTime = 0;
   hitSound.volume = Math.min(impactStrength / 10, 1);
-  hitSound.play().catch((error) => {
+  hitSound.play().catch((error: unknown) => {
     console.error("Error playing sound:", error);
   });
 };
@@ -36,7 +44,7 @@ const debugObject = {
   clear: () => {
     objectsToUpdate.forEach((object) => {
       object.body.removeEventListener("collide", playHitSound);
-      world.remove(object.body);
+      world.removeBody(object.body);
 
       scene.remove(object.mesh);
     });
