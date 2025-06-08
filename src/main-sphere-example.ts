@@ -57,138 +57,54 @@ const defaultContactMaterial = new CANNON.ContactMaterial(
   }
 );
 
-world.defaultContactMaterial = defaultContactMaterial;
+world.addContactMaterial(defaultContactMaterial);
 
 /**
  * Physics body's
  */
+
+const sphereShape = new CANNON.Sphere(0.5);
+
+const sphereBody = new CANNON.Body({
+  mass: 1, // kg
+  position: new CANNON.Vec3(0, 3, 0), // m
+  velocity: new CANNON.Vec3(0, 0, 0), // m/s
+  shape: sphereShape,
+  material: defaultMaterial,
+});
+
+sphereBody.applyLocalForce(
+  new CANNON.Vec3(0, 0, 0), // Force vector in N (Newtons)
+  sphereBody.position // Point of application of the force
+);
 
 const floorShape = new CANNON.Plane();
 const floorBody = new CANNON.Body({
   mass: 0, // kg, static body
   position: new CANNON.Vec3(0, 0, 0), // m
   shape: floorShape,
-  // material: defaultMaterial,
+  material: defaultMaterial,
   quaternion: new CANNON.Quaternion().setFromEuler(-Math.PI / 2, 0, 0), // Rotate the plane to be horizontal
 });
 
+world.addBody(sphereBody);
 world.addBody(floorBody);
 
 /**
- * Test geometryes
+ * Test sphere
  */
-interface ObjectsToUpdate {
-  mesh: THREE.Mesh;
-  body: CANNON.Body;
-}
-
-const objectsToUpdate: ObjectsToUpdate[] = [];
-
-const sphereBaseGeometries = {
-  three: new THREE.SphereGeometry(1, 32, 32),
-  cannon: new CANNON.Sphere(1),
-};
-
-const sphereMaterial = new THREE.MeshStandardMaterial({
-  color: "#ffffff",
-  metalness: 0.3,
-  roughness: 0.4,
-  envMap: environmentMapTexture,
-  envMapIntensity: 0.5,
-});
-
-const createSphereGeometry = (radius: number, position: CANNON.Vec3) => {
-  // Three.js mesh
-
-  const mesh = new THREE.Mesh(
-    sphereBaseGeometries.three.clone(),
-    sphereMaterial.clone()
-  );
-
-  mesh.scale.setScalar(radius);
-  mesh.castShadow = true;
-  mesh.position.copy(position as any);
-  scene.add(mesh);
-
-  // physics body
-  const shape = new CANNON.Sphere(radius);
-  const body = new CANNON.Body({
-    mass: 1, // kg
-    position: position, // m
-    shape: shape,
-  });
-
-  world.addBody(body);
-
-  // Add to the array
-  objectsToUpdate.push({ mesh, body });
-};
-
-/**
- * Creating spheres
- */
-const sideLength = 2;
-for (let i = 0; i < Math.pow(sideLength, 3); i++) {
-  const x = (i % sideLength) - Math.floor(sideLength / 2);
-  const y = Math.floor(i / sideLength ** 2) + 1;
-  const z =
-    Math.floor((i % sideLength ** 2) / sideLength) - Math.floor(sideLength / 2);
-
-  createSphereGeometry(0.5, new CANNON.Vec3(x, y, z));
-}
-
-/**
- * Boxes geometries
- */
-
-const boxBaseGeometry = new THREE.BoxGeometry(1, 1, 1);
-const boxMaterial = new THREE.MeshStandardMaterial({
-  color: "#ffffff",
-  metalness: 0.3,
-  roughness: 0.4,
-  envMap: environmentMapTexture,
-  envMapIntensity: 0.5,
-});
-
-const createBoxGeometry = (size: number, position: CANNON.Vec3) => {
-  // Three.js mesh
-  const mesh = new THREE.Mesh(boxBaseGeometry.clone(), boxMaterial.clone());
-
-  mesh.scale.setScalar(size);
-  mesh.castShadow = true;
-  mesh.position.copy(position as any);
-  scene.add(mesh);
-
-  // Physics body
-
-  const shape = new CANNON.Box(new CANNON.Vec3(size / 2, size / 2, size / 2));
-  const body = new CANNON.Body({
-    mass: 1, // kg
-    position: position, // m
-    shape: shape,
-  });
-
-  world.addBody(body);
-
-  // Add to the array
-
-  objectsToUpdate.push({ mesh, body });
-};
-
-/**
- * Creating boxes
- */
-
-const boxSideLength = 2;
-for (let i = 0; i < Math.pow(boxSideLength, 3); i++) {
-  const x = (i % boxSideLength) - Math.floor(boxSideLength / 2);
-  const y = Math.floor(i / boxSideLength ** 2) + 1;
-  const z =
-    Math.floor((i % boxSideLength ** 2) / boxSideLength) -
-    Math.floor(boxSideLength / 2);
-
-  createBoxGeometry(1, new CANNON.Vec3(x, y, z));
-}
+const sphere = new THREE.Mesh(
+  new THREE.SphereGeometry(0.5, 32, 32),
+  new THREE.MeshStandardMaterial({
+    metalness: 0.3,
+    roughness: 0.4,
+    envMap: environmentMapTexture,
+    envMapIntensity: 0.5,
+  })
+);
+sphere.castShadow = true;
+sphere.position.y = 0.5;
+scene.add(sphere);
 
 /**
  * Floor
@@ -287,15 +203,15 @@ const tick = () => {
   // Update controls
   controls.update();
 
-  // Update physics bodies
-
-  objectsToUpdate.forEach((object) => {
-    object.mesh.position.copy(object.body.position as any);
-    object.mesh.quaternion.copy(object.body.quaternion as any);
-  });
+  // adding forces
+  sphereBody.applyForce(
+    new CANNON.Vec3(.1, 0, 0),
+    sphereBody.position 
+  );
 
   // Update physics world
   world.step(1 / 60, deltaTime, 3); // Step the physics world at 60 FPS
+  sphere.position.copy(sphereBody.position as any);
 
   // Render
   renderer.render(scene, camera);
